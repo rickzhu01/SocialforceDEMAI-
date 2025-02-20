@@ -7,8 +7,8 @@ B_collection = {};
 P_collection = {};
 edge1 = 1;
 edge2 = 3;
-bike = 3;       %仿真时间内通过的自行车数
-ped = 6;        %仿真时间内通过的行人数
+bike = 0;       %仿真时间内通过的自行车数
+ped = 10;        %仿真时间内通过的行人数
 lambda1 = ped / t;    %行人到达时间间隔
 lambda2 = bike / t;   %非机动车到达时间间隔
 k = 1;             %设置自行车比例
@@ -144,7 +144,7 @@ for i = 0.1 : 0.1 : t
     line([3,4],[23,23]);
     
     % 添加颜色条
-    h_colorbar_a = colorbar('Position', [0.65, 0.1, 0.02, 0.8]);  % a值的颜色条
+    h_colorbar_a = colorbar('Position', [0.935, 0.1, 0.02, 0.8]);  % a值的颜色条
     colormap(h_colorbar_a, ([linspace(1, 0, 256)', linspace(0, 0, 256)', linspace(0, 0, 256)']));  % 设置颜色条映射为从[0,1,0]到[0,0,0]的绿色
     %ylabel(h_colorbar_a, 'F-persons');
     h = ylabel(h_colorbar_a, 'F-persons');
@@ -154,14 +154,14 @@ for i = 0.1 : 0.1 : t
     h_colorbar_a.Ticks = (ticks - min(ticks)) / (max(ticks) - min(ticks));
     h_colorbar_a.TickLabels = tickLabels;
     
-    h_colorbar_b = colorbar('Position', [0.75, 0.1, 0.02, 0.8]);  % b值的颜色条
-    colormap(h_colorbar_b, ([linspace(0, 0, 256)', linspace(1, 0, 256)', linspace(0, 0, 256)']));  % 设置颜色条映射为从[0,0,1]到[0,0,0]的蓝色
-    %ylabel(h_colorbar_b, 'F-bikes');
-    h = ylabel(h_colorbar_b, 'F-bikes');
-    h.Position = h.Position + [-5 0 0];  % 向左移动标签
-    tickLabels = {'0','250', '500','750', '1000'};
-    h_colorbar_b.Ticks = (ticks - min(ticks)) / (max(ticks) - min(ticks));
-    h_colorbar_b.TickLabels = tickLabels;
+%     h_colorbar_b = colorbar('Position', [0.75, 0.1, 0.02, 0.8]);  % b值的颜色条
+%     colormap(h_colorbar_b, ([linspace(0, 0, 256)', linspace(1, 0, 256)', linspace(0, 0, 256)']));  % 设置颜色条映射为从[0,0,1]到[0,0,0]的蓝色
+%     %ylabel(h_colorbar_b, 'F-bikes');
+%     h = ylabel(h_colorbar_b, 'F-bikes');
+%     h.Position = h.Position + [-5 0 0];  % 向左移动标签
+%     tickLabels = {'0','250', '500','750', '1000'};
+%     h_colorbar_b.Ticks = (ticks - min(ticks)) / (max(ticks) - min(ticks));
+%     h_colorbar_b.TickLabels = tickLabels;
     
     
     
@@ -169,16 +169,16 @@ for i = 0.1 : 0.1 : t
     zebra_width = 0.2;
     zebra_gap = 0.3;
         % 画出斑马线
-    for k = 0:10
+    for k = 0:20
         % 计算每条线的位置
         x = k * (zebra_width + zebra_gap);
         % 画出线条
-        patch([x x x+zebra_width x+zebra_width], [20 22 22 20], 'black');
+        patch([x x x+zebra_width x+zebra_width], [20 22 22 20], [0.5,0.5,0.5]);
     end
     hold on
     
     axis equal;
-    axis([0 4 0 25]);%防止抖动
+    axis([0 10 19 23]);%防止抖动
 
     for j = 1:length(B_collection)
         if B_collection{1,j}.Profile(2,i_r)>0
@@ -196,8 +196,8 @@ for i = 0.1 : 0.1 : t
         if P_collection{1,j}.Profile(1,i_r) > 0
             c2 = sqrt(P_collection{1,j}.F(1,i_r)^2 + P_collection{1,j}.F(2,i_r)^2);
             c2_1 = mat2gray(c2, [0, 100]);
-            scatter(P_collection{1,j}.Profile(1,i_r),P_collection{1,j}.Profile(2,i_r),50,[1-c2_1,0,0],'filled');
-            quiver(P_collection{1,j}.Profile(1,i_r),P_collection{1,j}.Profile(2,i_r),P_collection{1,j}.F(1,i_r)/c2,P_collection{1,j}.F(2,i_r)/c2,'color',[1-c2_1 0 0],'LineWidth',1,'ShowArrowHead','on');
+            scatter(P_collection{1,j}.Profile(1,i_r),P_collection{1,j}.Profile(2,i_r),150,[1-c2_1,0,0],'filled');
+            quiver(P_collection{1,j}.Profile(1,i_r),P_collection{1,j}.Profile(2,i_r),P_collection{1,j}.F(1,i_r)/c2/2,P_collection{1,j}.F(2,i_r)/c2/2,'color',[1-c2_1 0 0],'LineWidth',1,'ShowArrowHead','on');
             hold on
         end
     end

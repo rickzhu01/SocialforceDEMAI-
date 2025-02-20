@@ -22,7 +22,7 @@ classdef person  %行人类
         Aa1 = 200;       %自行车对个体的作用力强度系数
         Aa2 = 50;        %行人对个体的作用力强度系数
         Ba1 = 6.2;       %自行车对个体的心理力作用范围
-        Ba2 = 3;         %行人对行人作用力范围
+        Ba2 = 2;         %行人对行人作用力范围
         Bo = 1;          %个体对障碍物的心理作用范围
         r = 0.25;         %个体半径
         Ac = 100;        %障碍物排斥力强度系数
@@ -46,7 +46,7 @@ classdef person  %行人类
     methods
          
          function PE = person(t0,N,Profile,Fa,Fb,Fc,F,U,A,q,Va_x,Va_y,Ta,Aa1,Aa2,Ba1,Ba2,Bo,r,Ac,m,V,a,b,I,ko,kd,kl,alpha)%Construction functionr构造函数
-             if nargin > 0 %检查是否有输入参数，允许创建不带任何参数的默认对象，如果有参数就把对应的值赋给对象相应的属性
+             if nargin > 0
                  PE.t0 = t0;
                  PE.N = N;
                  PE.Profile = Profile;
@@ -82,7 +82,6 @@ classdef person  %行人类
      
         %更新速度
         function [U,F,A,Fa,Fb,Fc] = speed1(obj,argu1,argu2,t,e1,e2)
-            %初始化各种力、加速度和速度
             t_r = int16(10*t);
             t_r_old=int16(t_r - 1);
             
@@ -98,34 +97,34 @@ classdef person  %行人类
             
             %道路使用者的作用力
             Fb(:,1) = 0;
-            %argu1是自行车列表，argu2是行人列表
-            for i = 1:length(argu1)
-                if argu1{1,i}.Profile(1,t_r)<e2 && argu1{1,i}.Profile(1,t_r)>e1 && argu1{1,i}.Profile(2,t_r)~=0 && argu1{1,i}.Profile(1,t_r)>obj.Profile(1,t_r)
-                    R = sqrt((obj.Profile(1,t_r) - argu1{1,i}.Profile(1,t_r))^2 + (obj.Profile(2,t_r)-argu1{1,i}.Profile(2,t_r))^2);
-                    a = abs(argu1{1,i}.Profile(2,t_r) - obj.Profile(2,t_r));
-                    b = abs(argu1{1,i}.Profile(1,t_r) - obj.Profile(1,t_r));
-                    tan = a/b;
-                    if R>0 && R<obj.Ba1 && tan < 5000 
-                        fb = obj.Aa1 * exp((obj.r + argu1{1,i}.r - R)/obj.Ba1);
-                        Fb(:,1) = [(obj.Profile(1,t_r) - argu1{1,i}.Profile(1,t_r))/R * fb + Fb(1,1); (obj.Profile(2,t_r) - argu1{1,i}.Profile(2,t_r))/R * fb + Fb(2,1)];
-                    end
-                end
-            end
+
+%             for i = 1:length(argu1)
+%                 if argu1{1,i}.Profile(1,t_r)<e2 && argu1{1,i}.Profile(1,t_r)>e1 && argu1{1,i}.Profile(2,t_r)~=0 && argu1{1,i}.Profile(1,t_r)>obj.Profile(1,t_r)
+%                     R = sqrt((obj.Profile(1,t_r) - argu1{1,i}.Profile(1,t_r))^2 + (obj.Profile(2,t_r)-argu1{1,i}.Profile(2,t_r))^2);
+%                     a = abs(argu1{1,i}.Profile(2,t_r) - obj.Profile(2,t_r));
+%                     b = abs(argu1{1,i}.Profile(1,t_r) - obj.Profile(1,t_r));
+%                     tan = a/b;
+%                     if R>0 && R<obj.Ba1 && tan < 5000 
+%                         fb = obj.Aa1 * exp((obj.r + argu1{1,i}.r - R)/obj.Ba1);
+%                         Fb(:,1) = [(obj.Profile(1,t_r) - argu1{1,i}.Profile(1,t_r))/R * fb + Fb(1,1); (obj.Profile(2,t_r) - argu1{1,i}.Profile(2,t_r))/R * fb + Fb(2,1)];
+%                     end
+%                 end
+%             end
             
             for j=1:length(argu2)
-                if argu2{1,j}.Profile(1,t_r)>e1 && argu2{1,j}.Profile(1,t_r)<e2 && argu2{1,i}.Profile(1,t_r)>obj.Profile(1,t_r)
+                if argu2{1,j}.Profile(1,t_r) > obj.Profile(1,t_r)
                     R = sqrt((obj.Profile(1,t_r) - argu2{1,j}.Profile(1,t_r))^2 + (obj.Profile(2,t_r)-argu2{1,j}.Profile(2,t_r))^2);
-                    a = abs(argu2{1,i}.Profile(2,t_r) - obj.Profile(2,t_r));
-                    b = abs(argu2{1,i}.Profile(1,t_r) - obj.Profile(1,t_r));
+                    a = abs(argu2{1,j}.Profile(2,t_r) - obj.Profile(2,t_r));
+                    b = abs(argu2{1,j}.Profile(1,t_r) - obj.Profile(1,t_r));
                     tan = a/b;
-                    if R>0 && R<obj.Ba2 && tan < 5000
+                    if R>0 && R<obj.Ba2 && tan < 1.732
                         fb = obj.Aa2 * exp((obj.r + argu2{1,j}.r - R)/obj.Ba2);
                         Fb(:,1) = [(obj.Profile(1,t_r)-argu2{1,j}.Profile(1,t_r))/R*fb+Fb(1,1);(obj.Profile(2,t_r)-argu2{1,j}.Profile(2,t_r))/R*fb+Fb(2,1)];
                     end
                 end
             end
             
-            %道路边界的作用力
+            %道路边界的作用力 
             Fc(:,1) = [0;obj.Ac * exp((obj.r - abs(obj.Profile(2,t_r) - (20-0.5)))/obj.Bo) - obj.Ac * exp((obj.r-abs(obj.Profile(2,t_r) - (22+0.5)))/obj.Bo)];
             
             %力和力矩的输入
