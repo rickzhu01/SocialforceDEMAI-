@@ -1,3 +1,5 @@
+
+%%=============================   =============================      =============================         
 clear all;
 clc;
 % Parameters  General simulation  
@@ -7,15 +9,15 @@ B_collection = {};
 P_collection = {};
 edge1 = 1;     % 
 edge2 = 3;
-bike = 3;       %·  number of bikes   
-ped = 15;        %· number of pedestrians
+bike = 3;       %  number of bikes   
+ped = 10;        % number of pedestrians
 lambda1 = ped / t;    %   parameter for generation   
 lambda2 = bike / t;   %    parameter for generation   
 k = 1;             %     Portion 
 
 maxn = 1e5 + 5;
 eps = 1e-8;
- %=============================   =============================      =============================            
+%%=============================   =============================      =============================            
 % Parameters  DEM 
 %num_particles = 10;  %=====================
 % mass = 50;             % Mass of each particle (kg)  %=====================
@@ -26,21 +28,16 @@ damping = 0.1;          % Damping coefficient
 dt = 1e-4;              % Time step (s)
 total_time = 12.0;       % Total simulation time (s)
 
-% 2D
+%% 2D 
 
 p1= [1, 1];
-
 p2= [4, 4];
-
 p0= [2, 4];
-
 C=cross2D( p1(1,1 ),p1(1,2 ),p2(1,1 ),p2(1,2 )); 
 %point2vector(p0,p1,p2)
 % Angle between two vectors   
-
 OA=[1,1];
 OB=[1,-1];
-
 AngleDegree(OA,OB)
 % Generate random pedestrain coordination  in a rectangle area
 profile = unifrnd(1,8, ped,2 );
@@ -53,7 +50,6 @@ for i = 1:ped
        A= Destination-profile(i,:); 
        B= profile(j,:)- profile(i,:); 
        visual_degree_table(i,j) =AngleDegree(A,B);
-       
    end
 
 end 
@@ -131,25 +127,21 @@ for  i = 1 : length(P_collection)
 end
    
  %==============================  ==============================   ==============================  
-
-
-for i= 1:length(P_collection)
+%for i= 1:length(P_collection)
       
 %     len (P_collection{1, i}.Profile , P_collection{1, 1}.Profile )    % ===
          % sort by distance 
-    for  j= 1:length(P_collection) 
+   % for  j= 1:length(P_collection) 
          %   point2vector(P_collection{1, j}.Profile  ,P_collection{1, i}.Profile, (P_collection{1, 1}.Profile)
-    end  
-     
-end 
-
-
+    %end 
+%end 
 
 % Simulation loop
-num_steps = floor(total_time / dt);
-step_leap = 10;    %    Simulation step leap 
+
+step_leap = 20;    %    Simulation step leap ===================================
 m=0; 
 step_sim= 0.1; 
+
 
 % Main simulation  
 
@@ -160,32 +152,29 @@ for n  = 0.2 : step_sim : t        %  time step 1/r second
         
      % Pedestrians  Particle  interactions
     for j = 1 : length(P_collection)
-        
-            oldspeed_x = P_collection{1,j}.U(1,step - 1);   % initialization of social force model  tine elapse
+         if   P_collection{1,j}.t0-n <2                                 %  initialization of social force model  tine elapse
+            oldspeed_x = P_collection{1,j}.U(1,step - 1);    
             oldspeed_y = P_collection{1,j}.U(2,step - 1);
             [P_collection{1,j}.U(:,step),P_collection{1,j}.F(:,step),P_collection{1,j}.A(:,step),P_collection{1,j}.Fa(:,step),P_collection{1,j}.Fb(:,step),P_collection{1,j}.Fc(:,step)] = speed1(P_collection{1,j},B_collection, P_collection, n-step_sim, edge1,edge2);
             P_collection{1,j}.Profile(:,step) = position1(oldspeed_x,oldspeed_y,P_collection{1,j},n-step_sim); %  input  (oldspeed_x,oldspeed_y,obj,t)
-            
-           
-        if  m==5  && n> P_collection{1,j}.t0    %  5th  15th  25th  time leap  
+             
+         elseif    P_collection{1,j}.t0-n>=2 && m==3    %      time leap  
             oldspeed_x = P_collection{1,j}.U(1,step - 1);
             oldspeed_y = P_collection{1,j}.U(2,step - 1);
             [P_collection{1,j}.U(:,step),P_collection{1,j}.F(:,step),P_collection{1,j}.A(:,step),P_collection{1,j}.Fa(:,step),P_collection{1,j}.Fb(:,step),P_collection{1,j}.Fc(:,step)] = speed1(P_collection{1,j},B_collection, P_collection, n-step_sim, edge1,edge2);
             %[P_collection{1,j}.Ux,P_collection{1,j}.Uy]=speed1(P_collection{1,j},B_collection, P_collection,i-0.1,edge1,edge2);    
             P_collection{1,j}.Profile(:,step) = position1(oldspeed_x,oldspeed_y,P_collection{1,j},n-step_sim); %  input  (oldspeed_x,oldspeed_y,obj,t)
             
-        else 
-            P_collection{1,j}.F(:,step)=P_collection{1,j}.F(:,step-1)  ; %  keep previous social force model data 
+         elseif    P_collection{1,j}.t0-n>=2 && m~=3             %  keep previous social force model data 
+            P_collection{1,j}.F(:,step)=P_collection{1,j}.F(:,step-1)  ;  
             P_collection{1,j}.A(:,step)=P_collection{1,j}.A(:,step-1) ; 
             P_collection{1,j}.Fa(:,step)=P_collection{1,j}.Fa(:,step-1) ;
             P_collection{1,j}.Fb(:,step)=P_collection{1,j}.Fb(:,step-1) ;
             P_collection{1,j}.Fc(:,step)=P_collection{1,j}.Fc(:,step-1);
-            P_collection{1,j}.U(:,step) = P_collection{1,j}.U(:,step - 1);
-           % oldspeed_x = P_collection{1,j}.U(1,step - 1);
-           % oldspeed_y = P_collection{1,j}.U(2,step - 1);
-            
+            P_collection{1,j}.U(:,step) = P_collection{1,j}.U(:,step -1);
+            oldspeed_x = P_collection{1,j}.U(1,step);
+            oldspeed_y = P_collection{1,j}.U(2,step);
             P_collection{1,j}.Profile(:,step) = position1(oldspeed_x,oldspeed_y,P_collection{1,j},n-step_sim); %  input  (oldspeed_x,oldspeed_y,obj,t)
-            
          end 
     end
    
@@ -207,17 +196,14 @@ for n  = 0.2 : step_sim : t        %  time step 1/r second
                 rel_vel =  P_collection{1,j}.U(:,step) - P_collection{1,i}.U(:,step);  %=== caution
                 force_n = k_n * overlap * normal - damping * rel_vel;
                 
-               P_collection{1,i}.nforces(1:2,step)  = P_collection{1,i}.nforces(1:2,step) - force_n;  %===
-               P_collection{1,j}.nforces(:,step)  = P_collection{1,j}.nforces(:,step) + force_n;  %===
+               P_collection{1,i}.nforces(:,step)  = P_collection{1,i}.nforces(:,step) - force_n;  %==========
+               P_collection{1,j}.nforces(:,step)  = P_collection{1,j}.nforces(:,step) + force_n;  
                
-                   % Update velocities and positions
+              % Update velocities and positions
                mass= P_collection{1,j}.m ; 
                P_collection{1,j}.U(:,step) = P_collection{1,j}.U(:,step) + (P_collection{1,j}.nforces(:,step) ./ mass) .*[dt;dt] ; % ====  intergration  person class   body mass  class 
                P_collection{1,j}.Profile(:,step)=  position1( P_collection{1,j}.U(1,step), P_collection{1,j}.U(2,step ),P_collection{1,j},n-step_sim);  % ==========intergration person class    update position 
                   
-               %      Profile = position1(oldspeed_x,oldspeed_y,obj,t)  % another 
-                %    P_collection{1,j}.Profile(:,step) = position1(oldspeed_x,oldspeed_y,P_collection{1,j},i-0.1);
-               
              end
           end 
         end  
