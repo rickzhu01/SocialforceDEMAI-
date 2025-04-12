@@ -1,4 +1,4 @@
-classdef bicycle  %自行车类
+classdef  bicycle  %自行车类
     %bikes are the object which run on roads
 
     %   此处显示详细说明
