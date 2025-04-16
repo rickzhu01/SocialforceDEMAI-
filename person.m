@@ -15,7 +15,7 @@ classdef person  %行人类
         Uy;        % Instananeous Speed axis-Y
         q = 0.1;        % delta t  ====================================
         Va_x ;     % Expected speed 
-        Va_y = 0;        % Expected speed 
+        Va_y;        % Expected speed 
         Ta = 0.5;          %  accustomed time 
         Aa1 = 200;       %  bicycle to pedestrian
         Aa2 = 50;        %   pedestrian to pedestrian
@@ -39,6 +39,8 @@ classdef person  %行人类
         
         attention = 20; %注意力机制
         attention_count = 0;
+        destination_x;
+        destination_y;
     end
       
   %  properties (Dependent)
@@ -95,8 +97,35 @@ classdef person  %行人类
             A = zeros(2,1);
             U = zeros(2,1);
             
-             %自驱力
-            Fa(:,1) = [obj.m * (obj.Va_x - obj.U(1,t_r))/obj.Ta; obj.m*(obj.Va_y - obj.U(2,t_r))/obj.Ta];
+            %获取当前坐标
+            current_x = obj.Profile(1,t_r);
+            current_y = obj.Profile(2,t_r);
+
+            %计算指向终点的单位向量
+            dx = obj.destination_x - current_x;
+            dy = obj.destination_y - current_y;
+            distToDest = sqrt(dx^2 + dy^2);
+            if distToDest < 1e-6
+                % 避免距离太小除零
+                Ex = 0; 
+                Ey = 0;
+            else
+                Ex = dx / distToDest;
+                Ey = dy / distToDest;
+            end
+
+            %计算期望速度
+            desiredSpeedMag = sqrt(obj.Va_x^2 + obj.Va_y^2); 
+            
+            %然后期望速度向量 = desiredSpeedMag * (Ex, Ey)
+            Va_x_now = desiredSpeedMag * Ex;
+            Va_y_now = desiredSpeedMag * Ey;
+            
+            %更新后的自驱力（考虑竖直方向上的速度分量）
+            Fa(:,1) = [obj.m * (Va_x_now - obj.U(1,t_r)) / obj.Ta; obj.m * (Va_y_now - obj.U(2,t_r)) / obj.Ta];
+
+            %旧版本的自驱力
+            %Fa(:,1) = [obj.m * (obj.Va_x - obj.U(1,t_r))/obj.Ta; obj.m*(obj.Va_y - obj.U(2,t_r))/obj.Ta];
             
             %道路使用者的作用力
             Fb(:,1) = 0;
@@ -161,6 +190,8 @@ classdef person  %行人类
             %else
               %  U(1,1) = 0;
             %end
+           
+
         end
 
         %  update position 

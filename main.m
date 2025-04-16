@@ -113,6 +113,7 @@ for  i = 1 : length(P_collection)
     end
     P_collection{1,i}.m = weight();         %质量随机化，
     P_collection{1,i}.Va_x = normrnd(1.34, 0.287, [1, 1]);   %期望速度随机化
+    P_collection{1,i}.Va_y = 0; %初始状态下竖直方向上速度为0
     P_collection{1,i}.Fa = zeros(2,r*t);
     P_collection{1,i}.Fb = zeros(2,r*t);
     P_collection{1,i}.Fc = zeros(2,r*t);
@@ -123,6 +124,8 @@ for  i = 1 : length(P_collection)
     P_collection{1,i}.U(2,1) = 0.1;       %=============================         
     P_collection{1,i}.Profile = zeros(2,r*t); 
     P_collection{1,i}.Profile(2,:) = 20 + 5* rand(1);   %行人生成
+    P_collection{1,i}.destination_x = 10;
+    P_collection{1,i}.destination_y = 20 + 2*rand(1);
     for j  = 1:r*t
         P_collection{1,i}.attention(1,j) = P_collection{1,i}.attention(1,1); %行人初始的注意力机制均为20
     end
