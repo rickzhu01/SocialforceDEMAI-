@@ -41,6 +41,7 @@ classdef person  %行人类
         attention_count = 0;
         destination_x;
         destination_y;
+        density;
     end
       
   %  properties (Dependent)

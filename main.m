@@ -126,6 +126,7 @@ for  i = 1 : length(P_collection)
     P_collection{1,i}.Profile(2,:) = 20 + 5* rand(1);   %行人生成
     P_collection{1,i}.destination_x = 10;
     P_collection{1,i}.destination_y = 20 + 2*rand(1);
+    P_collection{1,i}.density = zeros(1,r*t);
     for j  = 1:r*t
         P_collection{1,i}.attention(1,j) = P_collection{1,i}.attention(1,1); %行人初始的注意力机制均为20
     end
@@ -238,7 +239,10 @@ for n  = 0.2 : step_sim : t        %  time step 1/r second
             end
         end
     end
-    
+
+    for j = 1 : length(P_collection)
+        P_collection{j}.density(1,step) =  density(P_collection{j},P_collection,step);
+    end
 end
  
 timetext = uicontrol('style','text','string','0','fontsize',12,'position',[200,350,50,20]);%当前时间
