@@ -44,11 +44,7 @@ classdef person  %行人类
         density;
     end
       
-  %  properties (Dependent)
-         
-  %  end
-           
-
+        
     methods
          
          function PE = person(t0,N,Profile,Fa,Fb,Fc,F,U,A,q,Va_x,Va_y,Ta,Aa1,Aa2,Ba1,Ba2,Bo,r,Ac,m,V,a,b,I,ko,kd,kl,alpha)%Construction functionr鏋勯€犲嚱鏁�

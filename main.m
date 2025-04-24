@@ -28,6 +28,9 @@ damping = 0.1;          % Damping coefficient
 dt = 1e-4;              % Time step (s)
 total_time = 12.0;       % Total simulation time (s)
 
+%能量损失函数记录 
+energyLoss = zeros(1, r*t);
+
 %% 2D 
 
 p1= [1, 1];
@@ -220,7 +223,9 @@ for n  = 0.2 : step_sim : t        %  time step 1/r second
                   
              end
           end 
-        end  
+     end 
+
+     [energyLoss(step), pairLossStep] = collisionEnergyLoss( P_collection, step, k_n, damping, dt, radius);
        
         
     for j = 1 : length(B_collection)   % Bicycle
@@ -255,8 +260,7 @@ for i = 0.1 : 0.1 : t
 
     plot([0 4],[0 0]);%画坐标轴
     plot([0 0],[0 25]);%画坐标轴
-    
- 
+
     line([1,1],[0,19]);
     line([3,3],[0,19]);
     line([1,1],[23,25]);
