@@ -3,16 +3,15 @@
 clear all;
 clc;
 % Parameters  General simulation  
-t = 15;                    %   time  
+t = 50;                    %   time  
 r = 10;                    %   time  resolution 
-B_collection = {};
 P_collection = {};
 edge1 = 1;     % 
 edge2 = 3;
-bike = 3;       %  number of bikes   
-ped = 6;        % number of pedestrians
+
+ped = 20;        % number of pedestrians
 lambda1 = ped / t;    %   parameter for generation   
-lambda2 = bike / t;   %    parameter for generation   
+
 k = 1;             %     Portion 
 
 maxn = 1e5 + 5;
@@ -46,7 +45,7 @@ AngleDegree(OA,OB)
 profile = unifrnd(1,8, ped,2 );
 Destination = [0.5, 9];
 
-    %  test 
+%  test 
 for i = 1:ped   
     
    for j= 1:ped   
@@ -56,55 +55,11 @@ for i = 1:ped
    end
 
 end 
-    %  Generate bike agents 
-for i = 1:bike
-    alphabet = [0, 1];
-    prob = [k, 1-k];
-    randomNumber = randsrc(1, 1, [alphabet; prob]);
-    if randomNumber == 0
-        B_collection{1,i} = bicycle;   %bicycle or e_bike
-    else 
-        B_collection{1,i} = e_bike;
-    end
-end
 
 %   =================  add from the end 
 for i=1:ped
     P_collection{end+1} = person;
 end
-
-%  Generate bike agents 
-for  i = 1 : length(B_collection)
-    B_collection{1,i}.N = i ; 
-    if i >= 2
-        B_collection{1,i}.t0 = B_collection{1,i-1}.t0 + timestart2(lambda2);
-    else
-        B_collection{1,i}.t0 = 0;
-    end
-    B_collection{1,i}.F = zeros(2,r*t);
-    B_collection{1,i}.A = zeros(2,r*t);
-    B_collection{1,i}.Fa = zeros(2,r*t);
-    B_collection{1,i}.Fb = zeros(2,r*t);
-    B_collection{1,i}.Fc = zeros(2,r*t);
-    B_collection{1,i}.U = zeros(2,r*t);
-    B_collection{1,i}.U(2,1) = 0.2;
-    B_collection{1,i}.Profile = zeros(2,r*t);
-    B_collection{1,i}.Profile(1,:) = 1.5 + rand(1,1);
-    
-    if isa(B_collection{1,i},'bicycle')
-        B_collection{1,i}.Name = 'bicycle';
-        B_collection{1,i}.m = weight() + normrnd(15, 2.150, [1, 1]);    %体重随机化
-        B_collection{1,i}.r = normrnd(0.85, 0.968, [1, 1]);     %尺寸随机化
-        B_collection{1,i}.Va_y = normrnd(3.51, 0.0324, [1, 1]);     %速度随机化
-        
-    elseif isa(B_collection{1,i}, 'e_bike')
-        B_collection{1,i}.Name = 'e_bike';
-        B_collection{1,i}.m = weight() + normrnd(40, 6.449, [1, 1]);    %体重随机化
-        B_collection{1,i}.r = normrnd(0.87, 0.1254, [1, 1]);     %尺寸随机化
-        B_collection{1,i}.Va_y = normrnd(5.24, 0.102, [1, 1]);    %期望速度随机化
-    end
-    
-end  
    
 %Generate peds agents 
 for  i = 1 : length(P_collection)
@@ -126,32 +81,59 @@ for  i = 1 : length(P_collection)
     P_collection{1,i}.nforces= zeros(2,r*t);
     P_collection{1,i}.U(2,1) = 0.1;       %=============================         
     P_collection{1,i}.Profile = zeros(2,r*t); 
-    P_collection{1,i}.Profile(2,:) = 20 + 5* rand(1);   %行人生成
-    P_collection{1,i}.destination_x = 10;
-    P_collection{1,i}.destination_y = 20 + 2*rand(1);
+    P_collection{1,i}.Profile(2,:) = 1 + 6* rand(1);   %行人生成
+    P_collection{1,i}.destination_x = 60;
+    P_collection{1,i}.destination_y = 2 + 4*rand(1);
     P_collection{1,i}.density = zeros(1,r*t);
+    P_collection{1,i}.coeffFa_log   = zeros(1,r*t);
+    P_collection{1,i}.coeffFb_log   = zeros(1,r*t);
+    P_collection{1,i}.coeffFc_log   = zeros(1,r*t);
+    P_collection{1,i}.attention_log = zeros(1,r*t);
+    P_collection{1,i}.lambda = randi([1 9]) / 10;
+
     for j  = 1:r*t
         P_collection{1,i}.attention(1,j) = P_collection{1,i}.attention(1,1); %行人初始的注意力机制均为20
+        P_collection{1,i}.coeffFa(1,j) = P_collection{1,i}.coeffFa(1,1);
+        P_collection{1,i}.coeffFb(1,j) = P_collection{1,i}.coeffFb(1,1);
+        P_collection{1,i}.coeffFc(1,j) = P_collection{1,i}.coeffFc(1,1);
     end
     P_collection{1,i}.attention_count = zeros(1,r*t);   %行人初始的注意力计数器初始化
 end
-   
- %==============================  ==============================   ==============================  
-%for i= 1:length(P_collection)
-      
-%     len (P_collection{1, i}.Profile , P_collection{1, 1}.Profile )    % ===
-         % sort by distance 
-   % for  j= 1:length(P_collection) 
-         %   point2vector(P_collection{1, j}.Profile  ,P_collection{1, i}.Profile, (P_collection{1, 1}.Profile)
-    %end 
-%end 
-
-% Simulation loop
 
 step_leap = 20;    %    Simulation step leap ===================================
 m=0; 
 step_sim= 0.1; 
 
+%% ---------- RL 初始化（共享策略网络） ----------
+stateDim   = 3;      % [ρ, Ec, v]
+actionDim  = 4;      % [coeffFa, coeffFb, coeffFc, attention]
+
+lr     = 1e-3;
+gamma  = 0.90;
+
+layers = [ ...
+    featureInputLayer(stateDim,"Name","state")
+    fullyConnectedLayer(16,"Name","fc1")
+    reluLayer("Name","relu1")
+    fullyConnectedLayer(actionDim,"Name","fc2")
+    sigmoidLayer("Name","sig") ];
+policyNetCell  = cell(1,ped);
+for k = 1:ped
+    policyNetCell{k} = dlnetwork(layerGraph(layers));
+end
+
+% 每个行人各自缓存 1-step TD 所需数据
+lastStateCell  = cell(1,ped);
+lastActionCell = cell(1,ped);
+
+% ――――― 监视器 ―――――
+tpm = trainingProgressMonitor;
+tpm.Info    = "Step";
+tpm.Metrics = ["Reward","AvgReward","rho","attention"];
+tpm.XLabel  = "Environment Step";
+
+avgWindow   = 200;                % 滑动平均窗口
+rewardQueue = zeros(1,avgWindow);
 
 % Main simulation  
 
@@ -168,7 +150,7 @@ for n  = 0.2 : step_sim : t        %  time step 1/r second
          if   P_collection{1,j}.t0-n <2                                 %  initialization of social force model  tine elapse
             oldspeed_x = P_collection{1,j}.U(1,step - 1);    
             oldspeed_y = P_collection{1,j}.U(2,step - 1);
-            [P_collection{1,j}.U(:,step),P_collection{1,j}.F(:,step),P_collection{1,j}.A(:,step),P_collection{1,j}.Fa(:,step),P_collection{1,j}.Fb(:,step),P_collection{1,j}.Fc(:,step)] = speed1(P_collection{1,j},B_collection, P_collection, n-step_sim, edge1,edge2);
+            [P_collection{1,j}.U(:,step),P_collection{1,j}.F(:,step),P_collection{1,j}.A(:,step),P_collection{1,j}.Fa(:,step),P_collection{1,j}.Fb(:,step),P_collection{1,j}.Fc(:,step)] = speed1(P_collection{1,j}, P_collection, n-step_sim, edge1,edge2);
             P_collection{1,j}.Profile(:,step) = position1(oldspeed_x,oldspeed_y,P_collection{1,j},n-step_sim); %  input  (oldspeed_x,oldspeed_y,obj,t)
             P_collection{1,j}.attention_count(1,step)=P_collection{1,j}.attention_count(1,step-1)+1;
              
@@ -187,14 +169,15 @@ for n  = 0.2 : step_sim : t        %  time step 1/r second
          elseif    P_collection{1,j}.t0-n>=2 && now_attention_count==P_collection{1,j}.attention(1,step)  %      time leap  
             oldspeed_x = P_collection{1,j}.U(1,step - 1);
             oldspeed_y = P_collection{1,j}.U(2,step - 1);
-            [P_collection{1,j}.U(:,step),P_collection{1,j}.F(:,step),P_collection{1,j}.A(:,step),P_collection{1,j}.Fa(:,step),P_collection{1,j}.Fb(:,step),P_collection{1,j}.Fc(:,step)] = speed1(P_collection{1,j},B_collection, P_collection, n-step_sim, edge1,edge2);
-            %[P_collection{1,j}.Ux,P_collection{1,j}.Uy]=speed1(P_collection{1,j},B_collection, P_collection,i-0.1,edge1,edge2);    
+            [P_collection{1,j}.U(:,step),P_collection{1,j}.F(:,step),P_collection{1,j}.A(:,step),P_collection{1,j}.Fa(:,step),P_collection{1,j}.Fb(:,step),P_collection{1,j}.Fc(:,step)] = speed1(P_collection{1,j}, P_collection, n-step_sim, edge1,edge2);
             P_collection{1,j}.Profile(:,step) = position1(oldspeed_x,oldspeed_y,P_collection{1,j},n-step_sim); %  input  (oldspeed_x,oldspeed_y,obj,t)
          end 
     end
     
     for j = 1 : length(P_collection)
         if P_collection{1,j}.attention_count(1,step-1)+1 == P_collection{1,j}.attention(1,step)
+            P_collection{1,j}.attention_count(1,step)=0;
+        elseif P_collection{1,j}.attention_count(1,step-1)+1 >= P_collection{1,j}.attention(1,step)
             P_collection{1,j}.attention_count(1,step)=0;
         end
     end
@@ -226,116 +209,166 @@ for n  = 0.2 : step_sim : t        %  time step 1/r second
      end 
 
      [energyLoss(step), pairLossStep] = collisionEnergyLoss( P_collection, step, k_n, damping, dt, radius);
-       
-        
-    for j = 1 : length(B_collection)   % Bicycle
-        if i > B_collection{1,j}.t0
-            oldspeed_x = B_collection{1,j}.U(1,step - 1);
-            oldspeed_y = B_collection{1,j}.U(2,step - 1);
-            if strcmp(B_collection{1,j}.Name, 'bicycle') 
-                [B_collection{1,j}.U(:,step ),B_collection{1,j}.F(:,step ),B_collection{1,j}.A(:,step ),B_collection{1,j}.Fa(:,step ),B_collection{1,j}.Fb(:,step ),B_collection{1,j}.Fc(:,step )] = speed2(B_collection{1,j},B_collection, P_collection, n-step_sim, edge1, edge2);
-                %[B_collection{1,j}.Ux,B_collection{1,j}.Uy]=speed2(B_collection{1,j},B_collection,P_collection,i-0.1,edge1,edge2);
-                B_collection{1,j}.Profile(:,step ) = position2(oldspeed_x,oldspeed_y,B_collection{1,j}, n-step_sim);
-            else
-                [B_collection{1,j}.U(:,step ),B_collection{1,j}.F(:,step ),B_collection{1,j}.A(:,step ),B_collection{1,j}.Fa(:,step ),B_collection{1,j}.Fb(:,step ),B_collection{1,j}.Fc(:,step )] = speed3(B_collection{1,j},B_collection, P_collection,  n-step_sim, edge1, edge2);
-                %[B_collection{1,j}.Ux,B_collection{1,j}.Uy]=speed2(B_collection{1,j},B_collection,P_collection,i-0.1,edge1,edge2);
-                B_collection{1,j}.Profile(:,step ) = position3(oldspeed_x,oldspeed_y,B_collection{1,j}, n-step_sim);
-            
-            end
-        end
-    end
 
     for j = 1 : length(P_collection)
         P_collection{j}.density(1,step) =  density(P_collection{j},P_collection,step);
     end
+    
+    %% ---------- RL 互动（所有行人，共享网络） ----------
+    % 为本环境步预创建暂存器（NaN 方便忽略未参与者）
+    stepReward =  nan(1,length(P_collection));
+    stepRho    =  nan(1,length(P_collection));
+    stepAtt    =  nan(1,length(P_collection));
+    
+    for j = 1:length(P_collection)
+    
+        % 仅当行人已进入通道才决策
+        if n < P_collection{j}.t0
+            continue
+        end
+    
+        % ===== 1. 当前状态 =====
+        rho_now = P_collection{j}.density(1,step);
+        Ec_now  = energyLoss(step);
+        v_now   = norm(P_collection{j}.U(:,step));
+        s_t     = dlarray([rho_now; Ec_now; v_now],"CB");
+    
+        % ===== 2. 策略网络输出动作 (0,1) =====
+        a_t = predict(policyNetCell{j}, s_t);
+    
+        coeffFa_new   = 0.5 + 1.5 * a_t(1);
+        coeffFb_new   = 0.5 + 1.5 * a_t(2);
+        coeffFc_new   = 0.5 + 1.5 * a_t(3);
+        attention_new = 40  - 30  * a_t(4);    % 10–40
+    
+        % ===== 3. 把动作写回未来时间轴 =====
+        P_collection{j}.coeffFa(1,step+1:end)   = coeffFa_new;
+        P_collection{j}.coeffFb(1,step+1:end)   = coeffFb_new;
+        P_collection{j}.coeffFc(1,step+1:end)   = coeffFc_new;
+        P_collection{j}.attention(1,step+1:end) = attention_new;
+    
+        % ===== 4. 记录日志（便于后处理、绘图） =====
+        P_collection{j}.coeffFa_log(1,step)    = coeffFa_new;
+        P_collection{j}.coeffFb_log(1,step)    = coeffFb_new;
+        P_collection{j}.coeffFc_log(1,step)    = coeffFc_new;
+        P_collection{j}.attention_log(1,step)  = attention_new;
+    
+        % ===== 5. 奖励函数（始终计算，以便监视器使用） =====
+        speedErr = abs(v_now - P_collection{j}.Va_x);
+        w_v      = 5;                % 速度误差权重
+        w_rho    = 15;               % ρ-attention 耦合权重
+        attNorm  = attention_new/40; % 0.25–1
+    
+        reward_t = - Ec_now ...
+                   - w_v  * speedErr ...
+                   - w_rho* rho_now * attNorm;
+    
+        % === 5-b 仅当有上一步缓存时才做 TD 更新 ===
+        if ~isempty(lastStateCell{j})
+            target = reward_t;       % TD(0)
+    
+            lossFun = @(net) mseLoss(net, lastStateCell{j}, lastActionCell{j}, target);
+
+            [grad,~] = dlfeval(lossFun, policyNetCell{j});
+            policyNetCell{j} = dlupdate(@(w,g) w - lr*g, policyNetCell{j}, grad);
+
+        end
+    
+        % ===== 6. 缓存本步状态 / 动作 =====
+        lastStateCell{j}  = s_t;
+        lastActionCell{j} = a_t;
+    
+        % ===== 7. 写入暂存器，用 NaN 规避 “未进入” 行人 =====
+        stepReward(j) = reward_t;
+        stepRho(j)    = rho_now;
+        stepAtt(j)    = attention_new;
+    
+    end  % ← for-j
+    
+    % ===== 8. 环境步结束后，统一写可视化监视器 =====
+    meanRwd = mean(stepReward,"omitnan");
+    meanRho = mean(stepRho,   "omitnan");
+    meanAtt = mean(stepAtt,   "omitnan");
+    
+    % 更新滑动平均
+    rewardQueue(mod(step-1,avgWindow)+1) = meanRwd;
+    avgRwd = mean(rewardQueue(rewardQueue~=0));
+    
+    updateInfo(tpm,"Step",string(step));
+    recordMetrics(tpm, step, ...
+        Reward    = meanRwd, ...
+        AvgReward = avgRwd, ...
+        rho       = meanRho, ...
+        attention = meanAtt);
 end
  
-timetext = uicontrol('style','text','string','0','fontsize',12,'position',[200,350,50,20]);%当前时间
-writerObj = VideoWriter('test.avi'); %// 定义一个视频文件用来存动画
-open(writerObj); %// 打开该视频文件
+% —————— 1. 准备 Figure 和 UI ——————
+figure;
+set(gcf,'Color','white');
+ax = gca;
+hold(ax,'on');
 
+% ① 固定坐标系（防止自动缩放）
+xlim(ax, [0 60]);
+ylim(ax, [0 8]);
+axis(ax,'equal');           % 锁定长宽比
+ax.XLimMode = 'manual';    
+ax.YLimMode = 'manual';
+
+% ② 画出矩形通道的边界
+%    [x y width height]
+rectangle(ax, 'Position',[0, 0, 60, 8], 'EdgeColor','k', 'LineWidth',1);
+
+% ③ 横向颜色条（下方正中）
+hCb = colorbar(ax,'southoutside');
+colormap(ax, [linspace(1,0,256)', zeros(256,1), zeros(256,1)]);  % 红→黑
+hCb.Position = [0.15 0.09 0.70 0.03];
+xlabel(hCb,'F-persons');
+ticks = [0 100 200 300 400];
+hCb.Ticks      = (ticks - min(ticks)) / (max(ticks) - min(ticks));
+hCb.TickLabels = arrayfun(@num2str, ticks, 'UniformOutput',false);
+
+% ④ 时间文本（颜色条正下方）
+timetext = uicontrol('Style','text', ...
+    'Units','normalized', ...
+    'String','0.0 s', ...
+    'FontSize',12, ...
+    'BackgroundColor','white', ...
+    'Position',[0.45 0.04 0.10 0.03]);
+
+% —————— 2. 打开视频写入器 ——————
+writerObj = VideoWriter('test.avi');
+open(writerObj);
+
+% —————— 3. 主循环：绘制 + 写帧 ——————
 for i = 0.1 : 0.1 : t
-   step = int16(r*i);
-    set(gcf, 'Color', 'white');  % 将当前图形的背景颜色设置为白色
+    step = int16(r * i);
 
-    plot([0 4],[0 0]);%画坐标轴
-    plot([0 0],[0 25]);%画坐标轴
+    % 清除上一帧的散点和箭头
+    delete(findall(ax, 'Type','Scatter'));
+    delete(findall(ax, 'Type','Quiver'));
 
-    line([1,1],[0,19]);
-    line([3,3],[0,19]);
-    line([1,1],[23,25]);
-    line([3,3],[23,25]);
-    line([0,1],[19,19]);
-    line([0,1],[23,23]);
-    line([3,4],[19,19]);
-    line([3,4],[23,23]);
-    
-    % 添加颜色条
-    h_colorbar_a = colorbar('Position', [0.65, 0.1, 0.02, 0.8]);  % a值的颜色条
-    colormap(h_colorbar_a, ([linspace(1, 0, 256)', linspace(0, 0, 256)', linspace(0, 0, 256)']));  % 设置颜色条映射为从[0,1,0]到[0,0,0]的绿色
-    %ylabel(h_colorbar_a, 'F-persons');
-    h = ylabel(h_colorbar_a, 'F-persons');
-    h.Position = h.Position + [-5 0 0];  % 向左移动标签
-    ticks = [0, 100, 200, 300, 400];  % 将刻度值映射到[0, 1]范围
-    tickLabels = {'0','100', '200','300', '400'};
-    h_colorbar_a.Ticks = (ticks - min(ticks)) / (max(ticks) - min(ticks));
-    h_colorbar_a.TickLabels = tickLabels;
-    
-    h_colorbar_b = colorbar('Position', [0.75, 0.1, 0.02, 0.8]);  % b值的颜色条
-    colormap(h_colorbar_b, ([linspace(0, 0, 256)', linspace(1, 0, 256)', linspace(0, 0, 256)']));  % 设置颜色条映射为从[0,0,1]到[0,0,0]的蓝色
-    %ylabel(h_colorbar_b, 'F-bikes');
-    h = ylabel(h_colorbar_b, 'F-bikes');
-    h.Position = h.Position + [-5 0 0];  % 向左移动标签
-    tickLabels = {'0','250', '500','750', '1000'};
-    h_colorbar_b.Ticks = (ticks - min(ticks)) / (max(ticks) - min(ticks));
-    h_colorbar_b.TickLabels = tickLabels;
-    
-    
-    
-     % 设置斑马线的宽度和间隔
-    zebra_width = 0.2;
-    zebra_gap = 0.3;
-        % 画出斑马线
-    for k = 0:10
-        % 计算每条线的位置
-        x = k * (zebra_width + zebra_gap);
-        % 画出线条
-        patch([x x x+zebra_width x+zebra_width], [20 22 22 20], 'black');
-    end
-    hold on
-    
-    axis equal;
-    axis([0 4 0 25]);%防止抖动
-
-    for j = 1:length(B_collection)
-        if B_collection{1,j}.Profile(2,step )>0
-            %scatter(B_collection{1,j}.Profile(1,i_10),B_collection{1,j}.Profile(2,i_10),'red','filled',"diamond");
-            ecc = axes2ecc(0.7,0.08);  % 根据长半轴和短半轴计算椭圆偏心率
-            [elat,elon] = ellipse1(B_collection{1,j}.Profile(1,step ),B_collection{1,j}.Profile(2,step ),[0.7 ecc],90);
-            c1 = sqrt(B_collection{1,j}.F(1,step )^2 + B_collection{1,j}.F(2,step )^2);
-            c1_1 = mat2gray(c1, [0, 400]);    %归一化
-            plot(elat,elon,'color',[0 1-c1_1 0],'LineWidth',5);
-            quiver(B_collection{1,j}.Profile(1,step ),B_collection{1,j}.Profile(2,step ),B_collection{1,j}.F(1,step )/(c1/2),B_collection{1,j}.F(2,step )/(c1/2),'color',[0 1-c1_1 0],'LineWidth',1);
-            hold on
-        end
-    end
+    % 绘制所有粒子和力向量
     for j = 1:length(P_collection)
-        if P_collection{1,j}.Profile(1,step ) > 0
-            c2 = sqrt(P_collection{1,j}.F(1,step )^2 + P_collection{1,j}.F(2,step )^2);
-            c2_1 = mat2gray(c2, [0, 100]);
-            scatter(P_collection{1,j}.Profile(1,step ),P_collection{1,j}.Profile(2,step ),50,[1-c2_1,0,0],'filled');
-            quiver(P_collection{1,j}.Profile(1,step ),P_collection{1,j}.Profile(2,step ),P_collection{1,j}.F(1,step )/c2,P_collection{1,j}.F(2,step )/c2,'color',[1-c2_1 0 0],'LineWidth',1,'ShowArrowHead','on');
-            hold on
+        pos = P_collection{1,j}.Profile(:,step);
+        if pos(1) > 0
+            F = P_collection{1,j}.F(:,step);
+            c2 = norm(F);
+            c2_1 = mat2gray(c2, [0 100]);
+            scatter(ax, pos(1), pos(2), 50, [1-c2_1,0,0], 'filled');
+            quiver(ax, pos(1), pos(2), F(1)/c2, F(2)/c2, ...
+                   'Color',[1-c2_1,0,0], 'LineWidth',1, 'MaxHeadSize',0.5);
         end
     end
-    
-    hold off;
-    frame = getframe(gcf);    %把图像存入视频文件中
-    writeVideo(writerObj,frame);    %将帧写入视频
-    %set(timetext,'string',i);
-    str = [num2str(i), 's']; % 将数字转换为字符串并添加单位
-    set(timetext, 'String', str); % 更新 'timetext' 的字符串值
+
+    % 写入当前帧
+    frame = getframe(gcf);
+    writeVideo(writerObj, frame);
+
+    % 更新时间文本
+    set(timetext, 'String', sprintf('%.1f s', i));
     drawnow;
 end
 
+% —————— 4. 关闭视频 ——————
 close(writerObj);

@@ -42,6 +42,20 @@ classdef person  %行人类
         destination_x;
         destination_y;
         density;
+        coeffFa = 1;
+        coeffFb = 1;
+        coeffFc = 1;
+        
+        % ===== 记录 RL 每一步学到的新系数（便于论文后处理） =====
+        coeffFa_log     % 1×(r*t)  动态 Fa 系数
+        coeffFb_log     % 1×(r*t)  动态 Fb 系数
+        coeffFc_log     % 1×(r*t)  动态 Fc 系数
+        attention_log   % 1×(r*t)  动态 attention
+        
+        % 新增各向异性参数 改进基础的社会力模型 
+        % 为了让每个行人的行走风格不同，我们在main中随机化赋值lambda。
+        % 0 = 最大各向异性，只看前方；1 = 各向同性（原模型）
+        lambda;
     end
       
         
@@ -83,7 +97,7 @@ classdef person  %行人类
          end   
      
         %  update speed
-        function [U,F,A,Fa,Fb,Fc] = speed1(obj,argu1,argu2,t,e1,e2)
+        function [U,F,A,Fa,Fb,Fc] = speed1(obj,argu1,t,e1,e2)
             t_r = int16(10*t);
             t_r_old=int16(t_r - 1);
             
@@ -119,7 +133,7 @@ classdef person  %行人类
             Va_y_now = desiredSpeedMag * Ey;
             
             %更新后的自驱力（考虑竖直方向上的速度分量）
-            Fa(:,1) = [obj.m * (Va_x_now - obj.U(1,t_r)) / obj.Ta; obj.m * (Va_y_now - obj.U(2,t_r)) / obj.Ta];
+            Fa(:,1) = obj.coeffFa(1,t_r) * [obj.m * (Va_x_now - obj.U(1,t_r)) / obj.Ta; obj.m * (Va_y_now - obj.U(2,t_r)) / obj.Ta];
 
             %旧版本的自驱力
             %Fa(:,1) = [obj.m * (obj.Va_x - obj.U(1,t_r))/obj.Ta; obj.m*(obj.Va_y - obj.U(2,t_r))/obj.Ta];
@@ -135,26 +149,13 @@ classdef person  %行人类
                     tan = a/b;
                     if R>0 && R<obj.Ba1 && tan < 5000 
                         fb = obj.Aa1 * exp((obj.r + argu1{1,i}.r - R)/obj.Ba1);
-                        Fb(:,1) = [(obj.Profile(1,t_r) - argu1{1,i}.Profile(1,t_r))/R * fb + Fb(1,1); (obj.Profile(2,t_r) - argu1{1,i}.Profile(2,t_r))/R * fb + Fb(2,1)];
-                    end
-                end
-            end
-            
-            for j=1:length(argu2)
-                if argu2{1,j}.Profile(1,t_r)>e1 && argu2{1,j}.Profile(1,t_r)<e2 && argu2{1,i}.Profile(1,t_r)>obj.Profile(1,t_r)
-                    R = sqrt((obj.Profile(1,t_r) - argu2{1,j}.Profile(1,t_r))^2 + (obj.Profile(2,t_r)-argu2{1,j}.Profile(2,t_r))^2);
-                    a = abs(argu2{1,i}.Profile(2,t_r) - obj.Profile(2,t_r));
-                    b = abs(argu2{1,i}.Profile(1,t_r) - obj.Profile(1,t_r));
-                    tan = a/b;
-                    if R>0 && R<obj.Ba2 && tan < 5000
-                        fb = obj.Aa2 * exp((obj.r + argu2{1,j}.r - R)/obj.Ba2);
-                        Fb(:,1) = [(obj.Profile(1,t_r)-argu2{1,j}.Profile(1,t_r))/R*fb+Fb(1,1);(obj.Profile(2,t_r)-argu2{1,j}.Profile(2,t_r))/R*fb+Fb(2,1)];
+                        Fb(:,1) = obj.coeffFb(1,t_r) * [(obj.Profile(1,t_r) - argu1{1,i}.Profile(1,t_r))/R * fb + Fb(1,1); (obj.Profile(2,t_r) - argu1{1,i}.Profile(2,t_r))/R * fb + Fb(2,1)];
                     end
                 end
             end
             
             %道路边界的作用力 
-            Fc(:,1) = [0;obj.Ac * exp((obj.r - abs(obj.Profile(2,t_r) - (20-0.5)))/obj.Bo) - obj.Ac * exp((obj.r-abs(obj.Profile(2,t_r) - (22+0.5)))/obj.Bo)];
+            Fc(:,1) = obj.coeffFc(1,t_r) * [0;obj.Ac * exp((obj.r - abs(obj.Profile(2,t_r) - (20-0.5)))/obj.Bo) - obj.Ac * exp((obj.r-abs(obj.Profile(2,t_r) - (22+0.5)))/obj.Bo)];
             
             %力和力矩的输入
 
@@ -180,15 +181,13 @@ classdef person  %行人类
             A(:,1) = [F(1,1)/obj.m; F(2,1)/obj.m];
 
              %计算速度
-             U(2,1) =  obj.U(2,t_r) + A(2,1) * obj.q;
-             U(1,1) = obj.U(1,t_r) + A(1,1) * obj.q;
+            U(2,1) =  obj.U(2,t_r) + A(2,1) * obj.q;
+            U(1,1) = obj.U(1,t_r) + A(1,1) * obj.q;
             %if obj.U(1,t_r) + A(1,1) * obj.q >= 0
              %   U(1,1) = obj.U(1,t_r) + A(1,1) * obj.q;
             %else
               %  U(1,1) = 0;
             %end
-           
-
         end
 
         %  update position 
