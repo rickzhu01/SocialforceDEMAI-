@@ -46,3 +46,4 @@ function [totalLoss, pairLoss] = collisionEnergyLoss(P_collect, step, k_n, c_d, 
         end
     end
 end
+  
